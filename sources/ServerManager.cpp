@@ -88,9 +88,11 @@ void ServerManager::runServers() {
 
 		select_ret = select(_biggest_fd + 1, &recv_set_cpy, &write_set_cpy,
 							NULL, &timer);
-		if (select_ret < 0)
+		if (select_ret < 0) {
+			Logger::log(RESET, true, "strerror: %s", strerror(errno));
 			throw std::runtime_error(
 				std::string("webserv: server manager: server interruped"));
+		}
 
 		for (int fd = 0; fd <= _biggest_fd; ++fd) {
 			if (FD_ISSET(fd, &recv_set_cpy) && _servers_map.count(fd))

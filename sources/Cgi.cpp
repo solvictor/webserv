@@ -189,7 +189,11 @@ void Cgi::execute(short& error_code) {
 		return;
 	}
 	_cgi_pid = fork();
-	if (_cgi_pid == 0) {
+	if (_cgi_pid == -1) {
+		Logger::log(LIGHT_RED, true, "webserv: cgi handler: fork() failed");
+		error_code = 500;
+	} else if (_cgi_pid ==
+			   0) { // TODO Crash with infinite loop in script + not exiting
 		dup2(pipe_in[0], STDIN_FILENO);
 		dup2(pipe_out[1], STDOUT_FILENO);
 		close(pipe_in[0]);
@@ -198,12 +202,11 @@ void Cgi::execute(short& error_code) {
 		close(pipe_out[1]);
 		StringVector envp(_ch_env);
 		StringVector argvp(_argv);
+		Logger::log(RESET, true, "Executing cgi");
 		_exit_status = execve(argvp[0], static_cast<char**>(argvp),
 							  static_cast<char**>(envp));
 		exit(_exit_status);
-	} else if (_cgi_pid == -1) {
-		Logger::log(LIGHT_RED, true, "webserv: cgi handler: fork() failed");
-		error_code = 500;
+	} else {
 	}
 }
 
@@ -213,7 +216,10 @@ std::string Cgi::decode(std::string& path) {
 	while (token != std::string::npos) {
 		if (path.length() < token + 2)
 			break;
-		char decimal = hexToDec(path.substr(token + 1, 2));
+
+		char decimal = static_cast<char>(
+			strtol(path.substr(token + 1, 2).c_str(), NULL, 16));
+
 		path.replace(token, 3, toString(decimal));
 		token = path.find("%");
 	}

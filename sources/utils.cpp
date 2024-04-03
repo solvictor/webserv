@@ -31,22 +31,12 @@ int ft_stoi(std::string str) {
 	return res;
 }
 
-unsigned int hexToDec(const std::string& nb) {
-	unsigned int x;
-
-	std::stringstream ss;
-	ss << nb;
-	ss >> std::hex >> x;
-
-	return x;
-}
-
 std::string statusCodeString(short statusCode) {
 	switch (statusCode) {
 	case 100:
 		return "Continue";
 	case 101:
-		return "Switching Protocol";
+		return "Switching Protocols";
 	case 200:
 		return "OK";
 	case 201:
@@ -61,24 +51,32 @@ std::string statusCodeString(short statusCode) {
 		return "Reset Content";
 	case 206:
 		return "Partial Content";
+	case 226:
+		return "IM Used";
 	case 300:
-		return "Multiple Choice";
+		return "Multiple Choices";
 	case 301:
 		return "Moved Permanently";
 	case 302:
 		return "Moved Temporarily";
 	case 303:
-		return "See source";
+		return "See Other";
 	case 304:
 		return "Not Modified";
+	case 305:
+		return "Use Proxy";
 	case 307:
 		return "Temporary Redirect";
 	case 308:
 		return "Permanent Redirect";
+	case 310:
+		return "Too many Redirects";
 	case 400:
 		return "Bad Request";
 	case 401:
 		return "Unauthorized";
+	case 402:
+		return "Payment Required";
 	case 403:
 		return "Forbidden";
 	case 404:
@@ -100,17 +98,19 @@ std::string statusCodeString(short statusCode) {
 	case 412:
 		return "Precondition Failed";
 	case 413:
-		return "Payload Too Large";
+		return "Request Entity Too Large";
 	case 414:
 		return "URI Too Long";
 	case 415:
 		return "Unsupported Media Type";
 	case 416:
-		return "Requested Range Not Satisfiable";
+		return "Requested range unsatisfiable";
 	case 417:
 		return "Expectation Failed";
 	case 418:
 		return "I'm a teapot";
+	case 419:
+		return "Page expired";
 	case 421:
 		return "Misdirected Request";
 	case 425:
@@ -136,15 +136,15 @@ std::string statusCodeString(short statusCode) {
 	case 504:
 		return "Gateway Timeout";
 	case 505:
-		return "HTTP Version Not Supported";
+		return "HTTP Version not supported";
 	case 506:
 		return "Variant Also Negotiates";
 	case 507:
 		return "Insufficient Storage";
 	case 510:
-		return "Not Extended";
+		return "Not extended";
 	case 511:
-		return "Network Authentication Required";
+		return "Network authentication required";
 	default:
 		return "Undefined";
 	}

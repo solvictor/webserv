@@ -20,6 +20,5 @@ std::string getErrorPage(short statusCode);
 int buildHtmlIndex(std::string& dir_name, std::vector<uint8_t>& body,
 				   size_t& body_len);
 int ft_stoi(std::string str);
-unsigned int hexToDec(const std::string& nb);
 std::string getMimeType(std::string extension);
 std::string methodToString(HttpMethod method);
