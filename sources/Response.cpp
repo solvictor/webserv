@@ -377,18 +377,27 @@ void Response::buildErrorBody() {
 		setServerDefaultErrorPages();
 	else {
 		if (_code >= 400 && _code < 500) {
+			Logger::log(RESET, true, "Location %s", _location.c_str());
 			_location = _server.getErrorPages().at(_code);
 			if (_location[0] != '/')
 				_location.insert(_location.begin(), '/');
+			Logger::log(RESET, true, "Code %d", _code);
+			Logger::log(RESET, true, "Location %s", _location.c_str());
 			_code = 302;
+			Logger::log(RESET, true, "Code %d", _code);
 		}
 
+		Logger::log(RESET, true, "_target_file %s", _target_file.c_str());
 		_target_file = _server.getRoot() + _server.getErrorPages().at(_code);
+		Logger::log(RESET, true, "_target_file %s", _target_file.c_str());
 		short old_code = _code;
 		if (!readFile()) {
 			_code = old_code;
 			_response_body = getErrorPage(_code);
 		}
+		_target_file = "/website/error_pages/404.html";
+		Logger::log(RESET, true, "_response_body %s", _response_body.c_str());
+		Logger::log(RESET, true, "_target_file %s", _target_file.c_str());
 	}
 }
 

@@ -91,7 +91,7 @@ void ServerManager::runServers() {
 			Logger::log(RESET, true, "strerror: %s", strerror(errno));
 			if (ServerManager::active)
 				throw std::runtime_error(
-					std::string("webserv: server manager: server interruped"));
+					std::string("webserv: server manager: select() failed"));
 			break;
 		}
 
@@ -284,11 +284,9 @@ void ServerManager::readRequest(const int& i, Client& c) {
 
 void ServerManager::handleReqBody(Client& c) {
 	if (c.request.getBody().length() == 0) {
-		std::string tmp;
-		std::fstream file;
-		(c.response._cgi_obj.getCgiPath().c_str());
-		tmp = toString(file.rdbuf());
-		c.request.setBody(tmp);
+		Logger::log(RESET, true, "handleReqBody");
+		std::fstream file(c.response._cgi_obj.getCgiPath().c_str());
+		c.request.setBody(toString(file.rdbuf()));
 	}
 }
 
