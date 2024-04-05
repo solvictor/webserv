@@ -383,7 +383,7 @@ void Response::buildErrorBody() {
 				_location.insert(_location.begin(), '/');
 			Logger::log(RESET, true, "Code %d", _code);
 			Logger::log(RESET, true, "Location %s", _location.c_str());
-			_code = 302;
+			// _code = 302;
 			Logger::log(RESET, true, "Code %d", _code);
 		}
 
@@ -395,7 +395,6 @@ void Response::buildErrorBody() {
 			_code = old_code;
 			_response_body = getErrorPage(_code);
 		}
-		_target_file = "/website/error_pages/404.html";
 		Logger::log(RESET, true, "_response_body %s", _response_body.c_str());
 		Logger::log(RESET, true, "_target_file %s", _target_file.c_str());
 	}
