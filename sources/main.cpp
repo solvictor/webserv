@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
 
 	try {
 		ConfigParser cluster;
+		ServerManager master;
 
 		if (signal(SIGPIPE, SIG_IGN) == SIG_ERR ||
 			signal(SIGINT, stopHandler) == SIG_ERR)
@@ -25,9 +26,7 @@ int main(int argc, char** argv) {
 		cluster.createCluster(argc == 1 ? "configs/default.conf" : argv[1]);
 		// std::cout << cluster; // Debug
 
-		ServerManager master(cluster.getServers());
-
-		master.setupServers();
+		master.setupServers(cluster.getServers());
 		master.runServers();
 
 	} catch (const std::exception& e) {

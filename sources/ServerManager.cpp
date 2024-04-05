@@ -12,20 +12,18 @@
 #include <unistd.h>
 #include <vector>
 
-ServerManager::ServerManager(std::vector<ServerConfig>& servers)
-	: _servers(servers) {}
+ServerManager::ServerManager() {}
 
 ServerManager::~ServerManager() {
-	while (!_clients_map.empty())
-		closeConnection(_clients_map.begin()->first);
+	while (!_clients.empty())
+		closeConnection(_clients.begin()->first);
 
-	for (std::vector<ServerConfig>::iterator it = _servers.begin();
+	for (std::map<int, ServerConfig>::iterator it = _servers.begin();
 		 it != _servers.end(); ++it)
-		close(it->getFd());
+		close(it->second.getFd());
 }
 
-ServerManager::ServerManager(const ServerManager& source)
-	: _servers(source._servers) {
+ServerManager::ServerManager(const ServerManager& source) {
 	if (this == &source)
 		return;
 
@@ -37,23 +35,22 @@ ServerManager& ServerManager::operator=(const ServerManager& source) {
 		return *this;
 
 	_servers = source._servers;
-	_servers_map = source._servers_map;
-	_clients_map = source._clients_map;
+	_clients = source._clients;
 	_recv_fd_pool = source._recv_fd_pool;
 	_write_fd_pool = source._write_fd_pool;
 	_biggest_fd = source._biggest_fd;
 	return *this;
 }
 
-void ServerManager::setupServers() {
+void ServerManager::setupServers(std::vector<ServerConfig>& servers) {
 	std::cout << std::endl;
 	Logger::log(LIGHT_BLUE, false, "Initializing servers...");
 	char buf[INET_ADDRSTRLEN];
 	bool serverDub;
-	for (std::vector<ServerConfig>::iterator it = _servers.begin();
-		 it != _servers.end(); ++it) {
+	for (std::vector<ServerConfig>::iterator it = servers.begin();
+		 it != servers.end(); ++it) {
 		serverDub = false;
-		for (std::vector<ServerConfig>::iterator it2 = _servers.begin();
+		for (std::vector<ServerConfig>::iterator it2 = servers.begin();
 			 it2 != it; ++it2) {
 			if (it2->getHost() == it->getHost() &&
 				it2->getPort() == it->getPort()) {
@@ -69,6 +66,8 @@ void ServerManager::setupServers() {
 					inet_ntop(AF_INET, &it->getHost(), buf, INET_ADDRSTRLEN),
 					it->getPort());
 	}
+	_biggest_fd = 0;
+	initializeSets(servers);
 }
 
 void ServerManager::runServers() {
@@ -76,8 +75,6 @@ void ServerManager::runServers() {
 	fd_set write_set_cpy;
 	int select_ret;
 
-	_biggest_fd = 0;
-	initializeSets();
 	struct timeval timer;
 
 	while (true) {
@@ -95,26 +92,24 @@ void ServerManager::runServers() {
 		}
 
 		for (int fd = 0; fd <= _biggest_fd; ++fd) {
-			if (FD_ISSET(fd, &recv_set_cpy) && _servers_map.count(fd))
-				acceptNewConnection(_servers_map.find(fd)->second);
-			else if (FD_ISSET(fd, &recv_set_cpy) && _clients_map.count(fd))
-				readRequest(fd, _clients_map[fd]);
-			else if (FD_ISSET(fd, &write_set_cpy) && _clients_map.count(fd)) {
-				int cgi_state = _clients_map[fd].response.getCgiState();
+			if (FD_ISSET(fd, &recv_set_cpy) && _servers.count(fd))
+				acceptNewConnection(_servers.find(fd)->second);
+			else if (FD_ISSET(fd, &recv_set_cpy) && _clients.count(fd))
+				readRequest(fd, _clients[fd]);
+			else if (FD_ISSET(fd, &write_set_cpy) && _clients.count(fd)) {
+				int cgi_state = _clients[fd].response.getCgiState();
 				if (cgi_state == 1 &&
-					FD_ISSET(_clients_map[fd].response._cgi_obj.pipe_in[1],
+					FD_ISSET(_clients[fd].response._cgi_obj.pipe_in[1],
 							 &write_set_cpy))
-					sendCgiBody(_clients_map[fd],
-								_clients_map[fd].response._cgi_obj);
+					sendCgiBody(_clients[fd], _clients[fd].response._cgi_obj);
 				else if (cgi_state == 1 &&
-						 FD_ISSET(
-							 _clients_map[fd].response._cgi_obj.pipe_out[0],
-							 &recv_set_cpy))
-					readCgiResponse(_clients_map[fd],
-									_clients_map[fd].response._cgi_obj);
+						 FD_ISSET(_clients[fd].response._cgi_obj.pipe_out[0],
+								  &recv_set_cpy))
+					readCgiResponse(_clients[fd],
+									_clients[fd].response._cgi_obj);
 				else if ((cgi_state == 0 || cgi_state == 2) &&
 						 FD_ISSET(fd, &write_set_cpy))
-					sendResponse(fd, _clients_map[fd]);
+					sendResponse(fd, _clients[fd]);
 			}
 		}
 		checkTimeout();
@@ -124,8 +119,8 @@ void ServerManager::runServers() {
 /* Checks time passed for clients since last message, If more than
  * CONNECTION_TIMEOUT, close connection */
 void ServerManager::checkTimeout() {
-	for (std::map<int, Client>::iterator it = _clients_map.begin();
-		 it != _clients_map.end(); ++it) {
+	for (std::map<int, Client>::iterator it = _clients.begin();
+		 it != _clients.end(); ++it) {
 		if (time(NULL) - it->second.getLastTime() > CONNECTION_TIMEOUT) {
 			Logger::log(YELLOW, false, "Client %d timed out", it->first);
 			closeConnection(it->first);
@@ -136,13 +131,13 @@ void ServerManager::checkTimeout() {
 
 /* initialize recv+write fd_sets and add all server listening sockets to
  * _recv_fd_pool. */
-void ServerManager::initializeSets() {
+void ServerManager::initializeSets(std::vector<ServerConfig>& servers) {
 	FD_ZERO(&_recv_fd_pool);
 	FD_ZERO(&_write_fd_pool);
 
 	// adds servers sockets to _recv_fd_pool set
-	for (std::vector<ServerConfig>::iterator it = _servers.begin();
-		 it != _servers.end(); ++it) {
+	for (std::vector<ServerConfig>::iterator it = servers.begin();
+		 it != servers.end(); ++it) {
 		// Now it calles listen() twice on even if two servers have the same
 		// host:port
 		if (listen(it->getFd(), 512) == -1)
@@ -156,10 +151,10 @@ void ServerManager::initializeSets() {
 				strerror(errno));
 
 		addToSet(it->getFd(), _recv_fd_pool);
-		_servers_map.insert(std::make_pair(it->getFd(), *it));
+		_servers.insert(std::make_pair(it->getFd(), *it));
 	}
 	// at this stage _biggest_fd will belong to the last server created.
-	_biggest_fd = _servers.back().getFd();
+	_biggest_fd = servers.back().getFd();
 }
 
 void ServerManager::acceptNewConnection(ServerConfig& serv) {
@@ -190,9 +185,9 @@ void ServerManager::acceptNewConnection(ServerConfig& serv) {
 		return;
 	}
 	new_client.setSocket(client_sock);
-	if (_clients_map.count(client_sock))
-		_clients_map.erase(client_sock);
-	_clients_map.insert(std::make_pair(client_sock, new_client));
+	if (_clients.count(client_sock))
+		_clients.erase(client_sock);
+	_clients.insert(std::make_pair(client_sock, new_client));
 }
 
 void ServerManager::closeConnection(const int i) {
@@ -201,7 +196,7 @@ void ServerManager::closeConnection(const int i) {
 	if (FD_ISSET(i, &_recv_fd_pool))
 		removeFromSet(i, _recv_fd_pool);
 	close(i);
-	_clients_map.erase(i);
+	_clients.erase(i);
 }
 
 void ServerManager::sendResponse(const int& i, Client& c) {
@@ -235,12 +230,12 @@ void ServerManager::sendResponse(const int& i, Client& c) {
 }
 
 void ServerManager::assignServer(Client& c) {
-	for (std::vector<ServerConfig>::iterator it = _servers.begin();
+	for (std::map<int, ServerConfig>::iterator it = _servers.begin();
 		 it != _servers.end(); ++it) {
-		if (c.server.getHost() == it->getHost() &&
-			c.server.getPort() == it->getPort() &&
-			c.request.getServerName() == it->getServerName()) {
-			c.setServer(*it);
+		if (c.server.getHost() == it->second.getHost() &&
+			c.server.getPort() == it->second.getPort() &&
+			c.request.getServerName() == it->second.getServerName()) {
+			c.setServer(it->second);
 			return;
 		}
 	}
@@ -298,7 +293,7 @@ void ServerManager::sendCgiBody(Client& c, Cgi& cgi) {
 	int bytes_sent = 0;
 	std::string& req_body = c.request.getBody();
 
-	if (req_body.length() == 0)
+	if (req_body.empty())
 		bytes_sent = 0;
 	else if (req_body.length() < MESSAGE_BUFFER)
 		bytes_sent = write(cgi.pipe_in[1], req_body.c_str(), req_body.length());
@@ -326,8 +321,7 @@ void ServerManager::sendCgiBody(Client& c, Cgi& cgi) {
 // Reads CGI script's output
 void ServerManager::readCgiResponse(Client& c, Cgi& cgi) {
 	char buffer[MESSAGE_BUFFER * 2];
-	int bytes_read = 0;
-	bytes_read = read(cgi.pipe_out[0], buffer, MESSAGE_BUFFER * 2);
+	int bytes_read = read(cgi.pipe_out[0], buffer, MESSAGE_BUFFER * 2);
 
 	if (bytes_read == 0) {
 		removeFromSet(cgi.pipe_out[0], _recv_fd_pool);

@@ -15,7 +15,7 @@ Content-type: text/html\r
 	<head>
 		<title>Calculator</title>
 	</head>
-	<body>
+	<body style="text-align: center;">
 """
 
 expression = form.getvalue('expression')
