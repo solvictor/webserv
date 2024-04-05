@@ -101,17 +101,17 @@ void ServerManager::runServers() {
 			else if (FD_ISSET(fd, &recv_set_cpy) && _clients.count(fd))
 				readRequest(fd, _clients[fd]);
 			else if (FD_ISSET(fd, &write_set_cpy) && _clients.count(fd)) {
-				int cgi_state = _clients[fd].response.getCgiState();
-				if (cgi_state == 1 &&
+				CgiState cgi_state = _clients[fd].response.getCgiState();
+				if (cgi_state == CGI_PROCESSING &&
 					FD_ISSET(_clients[fd].response._cgi_obj.pipe_in[1],
 							 &write_set_cpy))
 					sendCgiBody(_clients[fd], _clients[fd].response._cgi_obj);
-				else if (cgi_state == 1 &&
+				else if (cgi_state == CGI_PROCESSING &&
 						 FD_ISSET(_clients[fd].response._cgi_obj.pipe_out[0],
 								  &recv_set_cpy))
 					readCgiResponse(_clients[fd],
 									_clients[fd].response._cgi_obj);
-				else if ((cgi_state == 0 || cgi_state == 2) &&
+				else if ((cgi_state == NO_CGI || cgi_state == CGI_FINISHED) &&
 						 FD_ISSET(fd, &write_set_cpy))
 					sendResponse(fd, _clients[fd]);
 			}
@@ -333,7 +333,7 @@ void ServerManager::readCgiResponse(Client& c, Cgi& cgi) {
 		waitpid(cgi.getCgiPid(), &status, 0);
 		if (WEXITSTATUS(status))
 			c.response.setErrorResponse(502);
-		c.response.setCgiState(2);
+		c.response.setCgiState(CGI_FINISHED);
 		if (c.response._response_content.find("HTTP/1.1") == std::string::npos)
 			c.response._response_content.insert(0, "HTTP/1.1 200 OK\r\n");
 		return;
@@ -345,7 +345,7 @@ void ServerManager::readCgiResponse(Client& c, Cgi& cgi) {
 		removeFromSet(cgi.pipe_out[0], _recv_fd_pool);
 		close(cgi.pipe_in[0]);
 		close(cgi.pipe_out[0]);
-		c.response.setCgiState(2);
+		c.response.setCgiState(CGI_FINISHED);
 		c.response.setErrorResponse(500);
 		return;
 	}

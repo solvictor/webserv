@@ -4,6 +4,8 @@
 #include "Request.hpp"
 #include "ServerConfig.hpp"
 
+enum CgiState { NO_CGI, CGI_PROCESSING, CGI_FINISHED };
+
 class ServerConfig;
 
 class Response {
@@ -23,8 +25,8 @@ public:
 	void buildResponse();
 	void clear();
 	void cutRes(size_t i);
-	int getCgiState();
-	void setCgiState(int state);
+	CgiState getCgiState();
+	void setCgiState(CgiState state);
 	void setErrorResponse(short code);
 
 	Cgi _cgi_obj;
@@ -42,8 +44,8 @@ private:
 	std::string _response_body;
 	std::string _location;
 	short _code;
-	int _cgi; // 0->NoCGI 1->CGI write/read to/from script
-			  // 2->CGI read/write done
+	CgiState _cgi; // 0->NoCGI 1->CGI write/read to/from script
+				   // 2->CGI read/write done
 	int _cgi_fd[2];
 	size_t _cgi_response_length;
 	bool _auto_index;

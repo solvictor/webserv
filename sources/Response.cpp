@@ -15,7 +15,7 @@ Response::Response() {
 	_response_body = "";
 	_location = "";
 	_code = 0;
-	_cgi = 0;
+	_cgi = NO_CGI;
 	_cgi_fd[0] = -1;
 	_cgi_fd[1] = -1;
 	_cgi_response_length = 0;
@@ -38,7 +38,7 @@ Response::Response(Request& req) : request(req) {
 	_response_body = "";
 	_location = "";
 	_code = 0;
-	_cgi = 0;
+	_cgi = NO_CGI;
 	_cgi_fd[0] = -1;
 	_cgi_fd[1] = -1;
 	_cgi_response_length = 0;
@@ -188,7 +188,7 @@ int Response::handleCgiTemp(std::string& location_key) {
 	path = _target_file;
 	_cgi_obj.clear();
 	_cgi_obj.setCgiPath(path);
-	_cgi = 1;
+	_cgi = CGI_PROCESSING;
 	if (pipe(_cgi_fd) < 0) {
 		_code = 500;
 		return 1;
@@ -237,7 +237,7 @@ int Response::handleCgi(std::string& location_key) {
 
 	_cgi_obj.clear();
 	_cgi_obj.setCgiPath(path);
-	_cgi = 1;
+	_cgi = CGI_PROCESSING;
 	if (pipe(_cgi_fd) < 0) {
 		_code = 500;
 		return 1;
@@ -403,7 +403,7 @@ void Response::buildErrorBody() {
 void Response::buildResponse() {
 	if (reqError() || !buildBody())
 		buildErrorBody();
-	if (_cgi)
+	if (_cgi != NO_CGI)
 		return;
 	if (_auto_index) {
 		if (buildHtmlIndex(_target_file, _body, _body_length)) {
@@ -428,7 +428,7 @@ bool Response::buildBody() {
 	}
 	if (handleTarget())
 		return false;
-	if (_cgi || _auto_index || _code)
+	if (_cgi != NO_CGI || _auto_index || _code)
 		return true;
 
 	if ((request.getMethod() == GET || request.getMethod() == HEAD) &&
@@ -483,13 +483,13 @@ std::string Response::getRes() { return _response_content; }
 
 int Response::getCode() const { return _code; }
 
-int Response::getCgiState() { return _cgi; }
+CgiState Response::getCgiState() { return _cgi; }
 
 void Response::setServer(ServerConfig& server) { _server = server; }
 
 void Response::setRequest(Request& req) { request = req; }
 
-void Response::setCgiState(int state) { _cgi = state; }
+void Response::setCgiState(CgiState state) { _cgi = state; }
 
 void Response::setErrorResponse(short code) {
 	_response_content = "";
@@ -524,7 +524,7 @@ void Response::clear() {
 	_response_body.clear();
 	_location.clear();
 	_code = 0;
-	_cgi = 0;
+	_cgi = NO_CGI;
 	_cgi_response_length = 0;
 	_auto_index = 0;
 }
