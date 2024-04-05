@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <vector>
 
+volatile sig_atomic_t ServerManager::active = true;
+
 ServerManager::ServerManager() {}
 
 ServerManager::~ServerManager() {
@@ -77,7 +79,7 @@ void ServerManager::runServers() {
 
 	struct timeval timer;
 
-	while (true) {
+	while (ServerManager::active) {
 		timer.tv_sec = 1;
 		timer.tv_usec = 0;
 		recv_set_cpy = _recv_fd_pool;
@@ -87,8 +89,10 @@ void ServerManager::runServers() {
 							NULL, &timer);
 		if (select_ret < 0) {
 			Logger::log(RESET, true, "strerror: %s", strerror(errno));
-			throw std::runtime_error(
-				std::string("webserv: server manager: server interruped"));
+			if (ServerManager::active)
+				throw std::runtime_error(
+					std::string("webserv: server manager: server interruped"));
+			break;
 		}
 
 		for (int fd = 0; fd <= _biggest_fd; ++fd) {
@@ -364,4 +368,8 @@ void ServerManager::removeFromSet(const int i, fd_set& set) {
 		_biggest_fd--;
 }
 
-void stopHandler(int sig __attribute__((unused))) { std::cout << "\033[2D"; }
+void stopHandler(int sig __attribute__((unused))) {
+	ServerManager::active = false;
+	std::cout << "\033[2D";
+	Logger::log(LIGHT_GREEN, true, "Server closed");
+}

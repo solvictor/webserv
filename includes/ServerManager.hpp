@@ -2,6 +2,7 @@
 
 #include "Client.hpp"
 #include "Response.hpp"
+#include <csignal>
 
 class ServerManager {
 public:
@@ -12,6 +13,7 @@ public:
 
 	void setupServers(std::vector<ServerConfig>& servers);
 	void runServers();
+	volatile static sig_atomic_t active;
 
 private:
 	std::map<int, ServerConfig> _servers;
