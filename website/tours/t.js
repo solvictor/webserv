@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-    
     const panels = document.querySelectorAll('.panel')
     
     panels.forEach(panel => {
