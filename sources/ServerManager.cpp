@@ -88,7 +88,6 @@ void ServerManager::runServers() {
 		select_ret = select(_biggest_fd + 1, &recv_set_cpy, &write_set_cpy,
 							NULL, &timer);
 		if (select_ret < 0) {
-			Logger::log(RESET, true, "strerror: %s", strerror(errno));
 			if (ServerManager::active)
 				throw std::runtime_error(
 					std::string("webserv: server manager: select() failed"));
@@ -199,6 +198,25 @@ void ServerManager::closeConnection(const int i) {
 		removeFromSet(i, _write_fd_pool);
 	if (FD_ISSET(i, &_recv_fd_pool))
 		removeFromSet(i, _recv_fd_pool);
+
+	Client& client = _clients[i];
+
+	int fd = client.response._cgi_obj.pipe_in[1];
+	if (fd > 2) {
+		if (FD_ISSET(fd, &_write_fd_pool))
+			removeFromSet(fd, _write_fd_pool);
+		if (FD_ISSET(fd, &_recv_fd_pool))
+			removeFromSet(fd, _recv_fd_pool);
+	}
+
+	fd = client.response._cgi_obj.pipe_out[0];
+	if (fd > 2) {
+		if (FD_ISSET(fd, &_write_fd_pool))
+			removeFromSet(fd, _write_fd_pool);
+		if (FD_ISSET(fd, &_recv_fd_pool))
+			removeFromSet(fd, _recv_fd_pool);
+	}
+
 	close(i);
 	_clients.erase(i);
 }
@@ -284,7 +302,6 @@ void ServerManager::readRequest(const int& i, Client& c) {
 
 void ServerManager::handleReqBody(Client& c) {
 	if (c.request.getBody().length() == 0) {
-		Logger::log(RESET, true, "handleReqBody");
 		std::fstream file(c.response._cgi_obj.getCgiPath().c_str());
 		c.request.setBody(toString(file.rdbuf()));
 	}

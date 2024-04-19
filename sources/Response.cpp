@@ -2,6 +2,8 @@
 #include "../includes/Logger.hpp"
 #include "../includes/file_utils.hpp"
 #include "../includes/utils.hpp"
+#include <csignal>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
@@ -23,6 +25,10 @@ Response::Response() {
 }
 
 Response::~Response() {
+	if (_cgi == CGI_PROCESSING) {
+		kill(_cgi_obj.getCgiPid(), SIGTERM);
+	}
+
 	if (_cgi_fd[0] > 2)
 		close(_cgi_fd[0]);
 
@@ -121,19 +127,6 @@ void Response::setHeaders() {
 	_response_content.append("\r\n");
 }
 
-static bool fileExists(const std::string& f) {
-	std::ifstream file(f.c_str());
-	return file.good();
-}
-
-static bool isDirectory(std::string path) {
-	struct stat file_stat;
-	if (stat(path.c_str(), &file_stat) != 0)
-		return false;
-
-	return S_ISDIR(file_stat.st_mode);
-}
-
 static bool isAllowedMethod(HttpMethod& method, const Location& location,
 							short& code) {
 	if (location.getMethods() & (1 << method))
@@ -154,11 +147,9 @@ static bool checkReturn(Location& loc, short& code, std::string& location) {
 
 static std::string combinePaths(std::string p1, std::string p2,
 								std::string p3) {
-	int len1;
-	int len2;
+	size_t len1 = p1.length();
+	size_t len2 = p2.length();
 
-	len1 = p1.length();
-	len2 = p2.length();
 	if (p1[len1 - 1] == '/' && (!p2.empty() && p2[0] == '/'))
 		p2.erase(0, 1);
 	if (p1[len1 - 1] != '/' && (!p2.empty() && p2[0] != '/'))
@@ -383,7 +374,7 @@ void Response::buildErrorBody() {
 				_location.insert(_location.begin(), '/');
 			Logger::log(RESET, true, "Code %d", _code);
 			Logger::log(RESET, true, "Location %s", _location.c_str());
-			_code = 302;
+			// _code = 302;
 			Logger::log(RESET, true, "Code %d", _code);
 		}
 

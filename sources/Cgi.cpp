@@ -202,7 +202,6 @@ void Cgi::execute(short& error_code) {
 		close(pipe_out[1]);
 		StringVector envp(_ch_env);
 		StringVector argvp(_argv);
-		Logger::log(RESET, true, "Executing cgi");
 		_exit_status = execve(argvp[0], static_cast<char**>(argvp),
 							  static_cast<char**>(envp));
 		exit(_exit_status);

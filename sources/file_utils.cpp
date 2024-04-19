@@ -39,3 +39,16 @@ std::string readFile(const std::string& path) {
 
 	return toString(config_file.rdbuf());
 }
+
+bool fileExists(const std::string& f) {
+	std::ifstream file(f.c_str());
+	return file.good();
+}
+
+bool isDirectory(std::string path) {
+	struct stat file_stat;
+	if (stat(path.c_str(), &file_stat) != 0)
+		return false;
+
+	return S_ISDIR(file_stat.st_mode);
+}

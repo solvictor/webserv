@@ -6,6 +6,7 @@ enum PathType { REGULAR_FILE, FOLDER, OTHER, BAD };
 
 PathType getTypePath(const std::string& path);
 int checkFile(const std::string& path, int mode);
-bool existsAndIsReadable(const std::string& path,
-									const std::string& index);
+bool existsAndIsReadable(const std::string& path, const std::string& index);
 std::string readFile(const std::string& path);
+bool fileExists(const std::string& f);
+bool isDirectory(std::string path);
