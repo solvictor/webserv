@@ -28,8 +28,8 @@ private:
 	void readRequest(const int&, Client&);
 	void handleReqBody(Client&);
 	void sendResponse(const int&, Client&);
-	void sendCgiBody(Client&, Cgi&);
-	void readCgiResponse(Client&, Cgi&);
+	void sendCgiBody(Client&);
+	void readCgiResponse(Client&);
 	void closeConnection(const int);
 	void assignServer(Client&);
 	void addToSet(const int, fd_set&);

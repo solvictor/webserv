@@ -3,6 +3,7 @@
 #include "../includes/Webserv.hpp"
 #include <arpa/inet.h>
 #include <cerrno>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -101,16 +102,15 @@ void ServerManager::runServers() {
 				readRequest(fd, _clients[fd]);
 			else if (FD_ISSET(fd, &write_set_cpy) && _clients.count(fd)) {
 				CgiState cgi_state = _clients[fd].response.getCgiState();
-				if (cgi_state == CGI_PROCESSING &&
+				if (cgi_state == PROCESSING &&
 					FD_ISSET(_clients[fd].response._cgi_obj.pipe_in[1],
 							 &write_set_cpy))
-					sendCgiBody(_clients[fd], _clients[fd].response._cgi_obj);
-				else if (cgi_state == CGI_PROCESSING &&
+					sendCgiBody(_clients[fd]);
+				else if (cgi_state == PROCESSING &&
 						 FD_ISSET(_clients[fd].response._cgi_obj.pipe_out[0],
 								  &recv_set_cpy))
-					readCgiResponse(_clients[fd],
-									_clients[fd].response._cgi_obj);
-				else if ((cgi_state == NO_CGI || cgi_state == CGI_FINISHED) &&
+					readCgiResponse(_clients[fd]);
+				else if ((cgi_state == NO_CGI || cgi_state == FINISHED) &&
 						 FD_ISSET(fd, &write_set_cpy))
 					sendResponse(fd, _clients[fd]);
 			}
@@ -141,7 +141,7 @@ void ServerManager::initializeSets(std::vector<ServerConfig>& servers) {
 	// adds servers sockets to _recv_fd_pool set
 	for (std::vector<ServerConfig>::iterator it = servers.begin();
 		 it != servers.end(); ++it) {
-		// Now it calles listen() twice on even if two servers have the same
+		// Now it calls listen() twice on even if two servers have the same
 		// host:port
 		if (listen(it->getFd(), 512) == -1)
 			throw std::runtime_error(
@@ -194,34 +194,33 @@ void ServerManager::acceptNewConnection(ServerConfig& serv) {
 }
 
 void ServerManager::closeConnection(const int i) {
+	Client& client = _clients[i];
+	if (client.response.getCgiState() == PROCESSING) {
+		Logger::log(RESET, true, "CGI processing on connection closing");
+		kill(client.response._cgi_obj.getCgiPid(), SIGTERM);
+		client.response.setErrorResponse(502);
+		client.response.setCgiState(FINISHED);
+		// int fd = client.response._cgi_obj.pipe_in[1];
+		// if (fd > 2 && FD_ISSET(fd, &_write_fd_pool))
+		// 	removeFromSet(fd, _write_fd_pool);
+
+		// fd = client.response._cgi_obj.pipe_out[0];
+		// if (fd > 2 && FD_ISSET(fd, &_recv_fd_pool))
+		// 	removeFromSet(fd, _recv_fd_pool);
+		return;
+	}
+
 	if (FD_ISSET(i, &_write_fd_pool))
 		removeFromSet(i, _write_fd_pool);
 	if (FD_ISSET(i, &_recv_fd_pool))
 		removeFromSet(i, _recv_fd_pool);
-
-	Client& client = _clients[i];
-
-	int fd = client.response._cgi_obj.pipe_in[1];
-	if (fd > 2) {
-		if (FD_ISSET(fd, &_write_fd_pool))
-			removeFromSet(fd, _write_fd_pool);
-		if (FD_ISSET(fd, &_recv_fd_pool))
-			removeFromSet(fd, _recv_fd_pool);
-	}
-
-	fd = client.response._cgi_obj.pipe_out[0];
-	if (fd > 2) {
-		if (FD_ISSET(fd, &_write_fd_pool))
-			removeFromSet(fd, _write_fd_pool);
-		if (FD_ISSET(fd, &_recv_fd_pool))
-			removeFromSet(fd, _recv_fd_pool);
-	}
 
 	close(i);
 	_clients.erase(i);
 }
 
 void ServerManager::sendResponse(const int& i, Client& c) {
+	Logger::log(RESET, true, "SENDRESPONSE");
 	int bytes_sent = 0;
 	std::string response = c.response.getRes();
 	if (response.length() < MESSAGE_BUFFER)
@@ -234,7 +233,7 @@ void ServerManager::sendResponse(const int& i, Client& c) {
 					"webserv: server manager: write() failed with fd %d", i);
 		closeConnection(i);
 	} else if (bytes_sent == 0 || (size_t)bytes_sent == response.length()) {
-		Logger::log(BLUE, false, "Response sent to socket %d, Stats=<%d>", i,
+		Logger::log(BLUE, false, "Response sent to socket %d, Status=<%d>", i,
 					c.response.getCode());
 		if (c.request.keepAlive() == false || c.request.errorCode() ||
 			c.response.getCgiState()) {
@@ -265,8 +264,8 @@ void ServerManager::assignServer(Client& c) {
 
 void ServerManager::readRequest(const int& i, Client& c) {
 	char buffer[MESSAGE_BUFFER];
-	int bytes_read = 0;
-	bytes_read = read(i, buffer, MESSAGE_BUFFER);
+	int bytes_read = read(i, buffer, MESSAGE_BUFFER);
+
 	if (bytes_read == 0) {
 		Logger::log(YELLOW, false,
 					"webserv: server manager: Client %d closed connection", i);
@@ -308,9 +307,10 @@ void ServerManager::handleReqBody(Client& c) {
 }
 
 // Send request body to CGI script
-void ServerManager::sendCgiBody(Client& c, Cgi& cgi) {
+void ServerManager::sendCgiBody(Client& c) {
 	int bytes_sent = 0;
 	std::string& req_body = c.request.getBody();
+	Cgi& cgi = c.response._cgi_obj;
 
 	if (req_body.empty())
 		bytes_sent = 0;
@@ -338,9 +338,11 @@ void ServerManager::sendCgiBody(Client& c, Cgi& cgi) {
 }
 
 // Reads CGI script's output
-void ServerManager::readCgiResponse(Client& c, Cgi& cgi) {
+void ServerManager::readCgiResponse(Client& c) {
 	char buffer[MESSAGE_BUFFER * 2];
+	Cgi& cgi = c.response._cgi_obj;
 	int bytes_read = read(cgi.pipe_out[0], buffer, MESSAGE_BUFFER * 2);
+	Logger::log(RESET, true, "read Cgi Response bytes: %d", bytes_read);
 
 	if (bytes_read == 0) {
 		removeFromSet(cgi.pipe_out[0], _recv_fd_pool);
@@ -350,7 +352,7 @@ void ServerManager::readCgiResponse(Client& c, Cgi& cgi) {
 		waitpid(cgi.getCgiPid(), &status, 0);
 		if (WEXITSTATUS(status))
 			c.response.setErrorResponse(502);
-		c.response.setCgiState(CGI_FINISHED);
+		c.response.setCgiState(FINISHED);
 		if (c.response._response_content.find("HTTP/1.1") == std::string::npos)
 			c.response._response_content.insert(0, "HTTP/1.1 200 OK\r\n");
 		return;
@@ -362,7 +364,7 @@ void ServerManager::readCgiResponse(Client& c, Cgi& cgi) {
 		removeFromSet(cgi.pipe_out[0], _recv_fd_pool);
 		close(cgi.pipe_in[0]);
 		close(cgi.pipe_out[0]);
-		c.response.setCgiState(CGI_FINISHED);
+		c.response.setCgiState(FINISHED);
 		c.response.setErrorResponse(500);
 		return;
 	}
