@@ -1,10 +1,8 @@
 #pragma once
 
-#include <fcntl.h>
-
-#include <sys/wait.h>
-
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #define CONNECTION_TIMEOUT 10
 #define MESSAGE_BUFFER 40000
