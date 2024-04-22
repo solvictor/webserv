@@ -4,7 +4,7 @@
 #include "Request.hpp"
 #include "ServerConfig.hpp"
 
-enum CgiState { NO_CGI, CGI_PROCESSING, CGI_FINISHED };
+enum CgiState { NO_CGI, PROCESSING, FINISHED };
 
 class ServerConfig;
 

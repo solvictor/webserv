@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 Response::Response() {
@@ -21,13 +22,12 @@ Response::Response() {
 	_cgi_fd[0] = -1;
 	_cgi_fd[1] = -1;
 	_cgi_response_length = 0;
-	_auto_index = 0;
+	_auto_index = false;
 }
 
 Response::~Response() {
-	if (_cgi == CGI_PROCESSING) {
+	if (_cgi_obj.getCgiPid() > 2 && !WIFEXITED(_cgi_obj.getCgiPid()))
 		kill(_cgi_obj.getCgiPid(), SIGTERM);
-	}
 
 	if (_cgi_fd[0] > 2)
 		close(_cgi_fd[0]);
@@ -179,11 +179,11 @@ int Response::handleCgiTemp(std::string& location_key) {
 	path = _target_file;
 	_cgi_obj.clear();
 	_cgi_obj.setCgiPath(path);
-	_cgi = CGI_PROCESSING;
 	if (pipe(_cgi_fd) < 0) {
 		_code = 500;
 		return 1;
 	}
+	_cgi = PROCESSING;
 	_cgi_obj.initEnvCgi(request, _server.getLocationKey(location_key)); // + URI
 	_cgi_obj.execute(_code);
 	return 0;
@@ -228,12 +228,12 @@ int Response::handleCgi(std::string& location_key) {
 
 	_cgi_obj.clear();
 	_cgi_obj.setCgiPath(path);
-	_cgi = CGI_PROCESSING;
 	if (pipe(_cgi_fd) < 0) {
 		_code = 500;
 		return 1;
 	}
 
+	_cgi = PROCESSING;
 	_cgi_obj.initEnv(request, target); // + URI
 	_cgi_obj.execute(_code);
 	return 0;

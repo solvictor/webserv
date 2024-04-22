@@ -192,8 +192,7 @@ void Cgi::execute(short& error_code) {
 	if (_cgi_pid == -1) {
 		Logger::log(LIGHT_RED, true, "webserv: cgi handler: fork() failed");
 		error_code = 500;
-	} else if (_cgi_pid ==
-			   0) { // TODO Crash with infinite loop in script + not exiting
+	} else if (_cgi_pid == 0) { // TODO Crash with infinite loop in script
 		dup2(pipe_in[0], STDIN_FILENO);
 		dup2(pipe_out[1], STDOUT_FILENO);
 		close(pipe_in[0]);
@@ -205,7 +204,6 @@ void Cgi::execute(short& error_code) {
 		_exit_status = execve(argvp[0], static_cast<char**>(argvp),
 							  static_cast<char**>(envp));
 		exit(_exit_status);
-	} else {
 	}
 }
 
