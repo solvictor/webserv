@@ -226,7 +226,6 @@ bool ServerManager::closeConnection(const int fd) {
 }
 
 void ServerManager::sendResponse(const int& fd) {
-	Logger::log(RESET, true, "SENDRESPONSE");
 	Client& client = _clients[fd];
 	std::string response = client.response.getRes();
 
@@ -353,7 +352,6 @@ void ServerManager::readCgiResponse(Client& client) {
 	char buffer[MESSAGE_BUFFER * 2];
 	Cgi& cgi = client.response._cgi_obj;
 	int bytes_read = read(cgi.pipe_out[0], buffer, MESSAGE_BUFFER * 2);
-	Logger::log(RESET, true, "read Cgi Response bytes: %d", bytes_read);
 
 	if (bytes_read == 0) {
 		removeFromSet(cgi.pipe_out[0], _recv_fd_pool);

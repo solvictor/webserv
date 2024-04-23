@@ -11,18 +11,9 @@
 #include <unistd.h>
 
 Response::Response() {
-	_target_file = "";
-	_body.clear();
-	_body_length = 0;
-	_response_content = "";
-	_response_body = "";
-	_location = "";
-	_code = 0;
-	_cgi = NO_CGI;
+	clear();
 	_cgi_fd[0] = -1;
 	_cgi_fd[1] = -1;
-	_cgi_response_length = 0;
-	_auto_index = false;
 }
 
 Response::~Response() {
@@ -37,18 +28,10 @@ Response::~Response() {
 }
 
 Response::Response(Request& req) : request(req) {
-	_target_file = "";
-	_body.clear();
-	_body_length = 0;
-	_response_content = "";
-	_response_body = "";
-	_location = "";
-	_code = 0;
+	clear();
 	_cgi = NO_CGI;
 	_cgi_fd[0] = -1;
 	_cgi_fd[1] = -1;
-	_cgi_response_length = 0;
-	_auto_index = 0;
 }
 
 Response::Response(const Response& source) {
@@ -515,10 +498,10 @@ void Response::clear() {
 	_response_content.clear();
 	_response_body.clear();
 	_location.clear();
-	_code = 0;
+	_code = 200;
 	_cgi = NO_CGI;
 	_cgi_response_length = 0;
-	_auto_index = 0;
+	_auto_index = false;
 }
 
 std::string Response::removeBoundary(std::string& body, std::string& boundary) {
