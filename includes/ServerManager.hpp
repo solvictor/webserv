@@ -25,12 +25,12 @@ private:
 	void acceptNewConnection(ServerConfig&);
 	void checkTimeout();
 	void initializeSets(std::vector<ServerConfig>& servers);
-	void readRequest(const int&, Client&);
+	void readRequest(const int&);
 	void handleReqBody(Client&);
-	void sendResponse(const int&, Client&);
+	void sendResponse(const int&);
 	void sendCgiBody(Client&);
 	void readCgiResponse(Client&);
-	void closeConnection(const int);
+	bool closeConnection(const int);
 	void assignServer(Client&);
 	void addToSet(const int, fd_set&);
 	void removeFromSet(const int, fd_set&);
