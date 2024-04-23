@@ -198,7 +198,7 @@ void ServerManager::acceptNewConnection(ServerConfig& server) {
 bool ServerManager::closeConnection(const int fd) {
 	Client& client = _clients[fd];
 	if (client.response.getCgiState() == PROCESSING) {
-		Logger::log(RESET, true, "CGI processing on connection closing");
+		Logger::log(BLUE, true, "CGI processing on connection closing");
 		Cgi& cgi = client.response._cgi_obj;
 
 		kill(cgi.getCgiPid(), SIGTERM);
@@ -206,12 +206,12 @@ bool ServerManager::closeConnection(const int fd) {
 		client.response.setCgiState(FINISHED);
 
 		int cgi_fd = cgi.pipe_in[1];
-		if (cgi_fd > 2 && FD_ISSET(fd, &_write_fd_pool))
-			removeFromSet(fd, _write_fd_pool);
+		if (cgi_fd > 2 && FD_ISSET(cgi_fd, &_write_fd_pool))
+			removeFromSet(cgi_fd, _write_fd_pool);
 
 		cgi_fd = cgi.pipe_out[0];
-		if (cgi_fd > 2 && FD_ISSET(fd, &_recv_fd_pool))
-			removeFromSet(fd, _recv_fd_pool);
+		if (cgi_fd > 2 && FD_ISSET(cgi_fd, &_recv_fd_pool))
+			removeFromSet(cgi_fd, _recv_fd_pool);
 		return false;
 	}
 
