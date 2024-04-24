@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <string>
 #include <vector>
+#include <unistd.h>
 
 static std::string serverparameters[] = {
 	"server_name", "listen",		"root",
