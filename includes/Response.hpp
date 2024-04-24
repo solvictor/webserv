@@ -17,7 +17,7 @@ public:
 	Response& operator=(const Response& source);
 
 	std::string getRes();
-	int getCode() const;
+	short getCode() const;
 
 	void setRequest(Request& req);
 	void setServer(ServerConfig& server);

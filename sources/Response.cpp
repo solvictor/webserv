@@ -29,7 +29,6 @@ Response::~Response() {
 
 Response::Response(Request& req) : request(req) {
 	clear();
-	_cgi = NO_CGI;
 	_cgi_fd[0] = -1;
 	_cgi_fd[1] = -1;
 }
@@ -393,7 +392,7 @@ bool Response::buildBody() {
 	}
 	if (handleTarget())
 		return false;
-	if (_cgi != NO_CGI || _auto_index || _code)
+	if (_cgi != NO_CGI || _auto_index || (_code && _code != 200))
 		return true;
 
 	if ((request.getMethod() == GET || request.getMethod() == HEAD) &&
@@ -446,7 +445,7 @@ bool Response::readFile() {
 // Returns the entire reponse (Headers + Body)
 std::string Response::getRes() { return _response_content; }
 
-int Response::getCode() const { return _code; }
+short Response::getCode() const { return _code; }
 
 CgiState Response::getCgiState() { return _cgi; }
 
@@ -487,7 +486,6 @@ void Response::clear() {
 	_body_length = 0;
 	_response_content.clear();
 	_response_body.clear();
-	_location.clear();
 	_code = 200;
 	_cgi = NO_CGI;
 	_cgi_response_length = 0;
