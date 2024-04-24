@@ -198,7 +198,7 @@ void ServerManager::acceptNewConnection(ServerConfig& server) {
 bool ServerManager::closeConnection(const int fd) {
 	Client& client = _clients[fd];
 	if (client.response.getCgiState() == PROCESSING) {
-		Logger::log(RESET, true, "CGI processing on connection closing");
+		Logger::log(BLUE, true, "CGI processing on connection closing");
 		Cgi& cgi = client.response._cgi_obj;
 
 		kill(cgi.getCgiPid(), SIGTERM);
@@ -206,12 +206,12 @@ bool ServerManager::closeConnection(const int fd) {
 		client.response.setCgiState(FINISHED);
 
 		int cgi_fd = cgi.pipe_in[1];
-		if (cgi_fd > 2 && FD_ISSET(fd, &_write_fd_pool))
-			removeFromSet(fd, _write_fd_pool);
+		if (cgi_fd > 2 && FD_ISSET(cgi_fd, &_write_fd_pool))
+			removeFromSet(cgi_fd, _write_fd_pool);
 
 		cgi_fd = cgi.pipe_out[0];
-		if (cgi_fd > 2 && FD_ISSET(fd, &_recv_fd_pool))
-			removeFromSet(fd, _recv_fd_pool);
+		if (cgi_fd > 2 && FD_ISSET(cgi_fd, &_recv_fd_pool))
+			removeFromSet(cgi_fd, _recv_fd_pool);
 		return false;
 	}
 
@@ -226,7 +226,6 @@ bool ServerManager::closeConnection(const int fd) {
 }
 
 void ServerManager::sendResponse(const int& fd) {
-	Logger::log(RESET, true, "SENDRESPONSE");
 	Client& client = _clients[fd];
 	std::string response = client.response.getRes();
 
@@ -353,7 +352,6 @@ void ServerManager::readCgiResponse(Client& client) {
 	char buffer[MESSAGE_BUFFER * 2];
 	Cgi& cgi = client.response._cgi_obj;
 	int bytes_read = read(cgi.pipe_out[0], buffer, MESSAGE_BUFFER * 2);
-	Logger::log(RESET, true, "read Cgi Response bytes: %d", bytes_read);
 
 	if (bytes_read == 0) {
 		removeFromSet(cgi.pipe_out[0], _recv_fd_pool);
