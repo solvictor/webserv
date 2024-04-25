@@ -20,24 +20,26 @@ Content-Type: text/html;charset=utf-8\r
 """
 
 try:
-	if not "filename" in form:
-		raise Exception("Missing filename in form")
-		
-	fileitem = form["filename"]
+    if not "filename" in form:
+        raise Exception("Missing filename in form")
 
-	if not fileitem.filename:
-		raise Exception("Uploading Failed")
-		
-	log("Received a file", color = BLUE, file = sys.stderr)
+    fileitem = form["filename"]
 
-	if not os.path.exists(os.getcwd() + '/cgi-bin/tmp/'):
-		os.mkdir(os.getcwd() + '/cgi-bin/tmp/')
+    if not fileitem.filename:
+        raise Exception("Uploading Failed")
 
-	open(os.getcwd() + '/cgi-bin/tmp/' + os.path.basename(fileitem.filename), 'wb').write(fileitem.file.read())
-	page += f"		<h1>The file \"{os.path.basename(fileitem.filename)}\" was uploaded to {os.getcwd()}/cgi-bin/tmp</h1>\n"
+    log("Received a file", color=BLUE, file=sys.stderr)
+
+    if not os.path.exists(os.getcwd() + "/upload/"):
+        os.mkdir(os.getcwd() + "/upload/")
+
+    open(os.getcwd() + "/upload/" + os.path.basename(fileitem.filename), "wb").write(
+        fileitem.file.read()
+    )
+    page += f'		<h1>The file "{os.path.basename(fileitem.filename)}" was uploaded to {os.getcwd()}/upload</h1>\n'
 
 except Exception as e:
-	page += f"		<h1>Error: {str(e)}</h1>\n"
+    page += f"		<h1>Error: {str(e)}</h1>\n"
 
 page += """\
 	</body>
